@@ -1,4 +1,3 @@
-SQLALCHEMY_DATABASE_URI = 'sqlite:////Users/joe/Documents/programming/python/rs1/Remote-Scorecard/database.db'
 SQLALCHEMY_POOL_RECYCLE = 280   # See http://help.pythonanywhere.com/pages/UsingSQLAlchemywithMySQL/
 
 SECRET_KEY = b'\xe2\xd4\x94$\xcc*\xb12\xf9\xdb\xbd\x1cv\xc6\'\xf1\x18\x92\x0c\xe6\xbb\xb93\x07"i\x93\x17\x82a\xe4\xbe'
