@@ -1,0 +1,44 @@
+{# reference: https://flask.palletsprojects.com/en/1.1.x/patterns/wtforms/ #}
+
+{% macro render_field(field) %}
+  {% if field.type == "BooleanField" %}
+    {{ field(**kwargs)|safe }} {{ field.label }}  <br>
+  {% else %}
+    {{ field.label }} <br> {{ field(**kwargs)|safe }} <br>
+  {% endif %}
+  {% if field.errors %}
+  <div>
+    <!-- Please fix the following errors:<br> -->
+    {% for error in field.errors %}
+      <span class="text-danger">{{ error }}</span><br>
+    {% endfor %}
+  </div>
+  {% endif %}
+{% endmacro %}
+
+{% macro render_field_no_break(field) %}
+  {{ field.label }} {{ field(**kwargs)|safe }}
+  {% if field.errors %}
+  <div>
+    <!-- Please fix the following errors:<br> -->
+    {% for error in field.errors %}
+      <span class="text-danger">{{ error }}</span><br>
+    {% endfor %}
+  </div>
+  {% endif %}
+{% endmacro %}
+
+{# commented out
+{% macro render_field(field) %}
+  <dt>{{ field.label }}
+  <dd>{{ field(**kwargs)|safe }}
+  {% if field.errors %}
+    <ul class=errors>
+    {% for error in field.errors %}
+      <li>{{ error }}</li>
+    {% endfor %}
+    </ul>
+  {% endif %}
+  </dd>
+{% endmacro %}
+#}

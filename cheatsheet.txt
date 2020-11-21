@@ -1,0 +1,98 @@
+To create tables in DB:
+from command line:
+    python3
+    from application import db;
+    db.create_all()
+
+SQLite tips:
+show tables in db:
+    sqlite3 database.db
+    .schema
+
+Video: https://www.youtube.com/watch?v=KrRzZGcHjK8 - python console sqlite
+
+Good article on basic Flask: https://medium.com/technest/build-a-crud-app-with-flask-bootstrap-heroku-60dfa3a788e8
+
+DB timestamp of now as default value:
+
+    class Grocery(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(80), nullable=False)
+    created_at = db.Column(db.DateTime, nullable=False,
+    default=datetime.utcnow)
+
+To show form errors:
+    print str(form.errors)
+
+flask-debugtoolbar: https://flask-debugtoolbar.readthedocs.io/en/latest/
+
+To query DB from command line:
+    python3
+    from app import db
+    from app import Company
+    Company.query.all() or company.query.first()
+    Company.query.first()
+
+simpler:
+
+results = Company.query.filter_by(company_name=‘aaa’).first() USES FILED NAMES, NOT PYTHON SYNTAX
+results = Company.query.filter(Company.company_name=‘aaa’).first() is more Pythonic.  This is Pretty Printed’s ppreferred method.
+results = User.query.filter(User.email=='joe@joe.com').first()
+results = User.query.filter(or_(User.username=='joe', User.email=='joe@joe.com')).first()
+
+Count:
+
+Company.query.count()
+Company.query.filter(xxxxxx).count() # Gives the count but not records.
+
+Sort:
+users = User.query.order_by(User.id.desc()).all()
+
+
+WT field size:
+ https://stackoverflow.com/questions/38749364/wtforms-form-field-text-enlargement
+
+Unbound field due to missing parenthesis:
+    https://stackoverflow.com/questions/38820081/flask-attributeerror-unboundfield-object-has-no-attribute-call
+
+print(query)
+    https://stackoverflow.com/questions/4617291/how-do-i-get-a-raw-compiled-sql-query-from-a-sqlalchemy-expression/37845168
+
+Raw SQL:
+
+average_rating = db.session.query(func.avg(Reviews.rating)).filter(Reviews.object_type == 1)
+print(average_rating)
+printed
+SELECT avg(reviews.rating) AS avg_1
+FROM reviews
+WHERE reviews.object_type = ?
+
+print(db.session.query) too
+
+average_rating = db.session.query(func.avg(Reviews.rating)).filter(Reviews.object_type == 1)\
+    .filter(Reviews.object_id == id).all()
+
+
+Nested variables in templates:
+{{ render_field(form.website, size=40, value=(form.website.data)) }}
+
+List all environment variables:
+env
+
+DB migrations:
+Video: https://www.youtube.com/watch?v=IxCBjUapkWk
+Docs:
+https://github.com/miguelgrinberg/Flask-Migrate
+https://flask-migrate.readthedocs.io/en/latest/
+
+initial migration:
+
+export FLASK_APP=app
+
+flask db init #created migrations directory
+flask db migrate -m "Initial migration.” # creates migration files
+
+flask db upgrade (applies DB change)
+
+Flask-Alchemy quickstart:
+    https://flask-sqlalchemy.palletsprojects.com/en/2.x/quickstart/

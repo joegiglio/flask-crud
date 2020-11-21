@@ -1,0 +1,36 @@
+.bg-black {
+  background-color: #000000;
+}
+
+.bg-light-grey {
+  background-color: #EDEDFA;
+}
+
+.bg-light-blue {
+  background-color: #9CA1B7;
+}
+
+.footer{
+  background-color: #000000;
+    color: #FFFFFF;
+
+}
+
+.alert {
+  margin-bottom: 0rem !important;
+}
+
+.alert-success {
+  color: #000000 !important;
+}
+
+.alert-danger {
+  color: #000000 !important;
+}
+
+body {
+  font-family: 'Poppins', sans-serif !important;
+  font-size: 16px !important;
+}
+
+
