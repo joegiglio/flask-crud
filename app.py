@@ -8,7 +8,6 @@ from wtforms.validators import InputRequired, Email, Length, EqualTo, Regexp, Da
 from datetime import datetime
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import exc, func, MetaData
-from flask_mail import Mail, Message
 from utils import session_dump
 from flask_migrate import Migrate
 
@@ -20,14 +19,16 @@ from flask_migrate import Migrate
 #from utils import session_dump, is_user_admin
 #from decorators import session_required, admin_required, session_required_obj, session_required_review
 #from strings import companies_snippet
+#from flask_mail import Mail, Message
 
 
 app = Flask(__name__)
 app.config.from_pyfile("config.py")
-mail = Mail(app)
+#mail = Mail(app)
 
 #s = URLSafeTimedSerializer(app.config['SECRET_KEY'])
 db = SQLAlchemy(app)
+migrate = Migrate(app, db)
 
 
 #   TODO: Move models to separate file.  I was having inheritace issues with db.create_all.  Need to revisit.
