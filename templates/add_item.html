@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+{% block title %}
+{{ title }}
+{% endblock %}
+
+{% block content %}
+    {% if object=="user" %}
+        <div class="container-fluid bg-light-grey text-black">
+            <div class="col-sm-8 p-1">
+                Add new {{ object }} <br>
+                <form method="post">
+
+                    {{ form.csrf_token }}
+                    {{ render_field_no_break(form.username) }}<br>
+                    {{ render_field_no_break(form.email) }}<br>
+                    {{ render_field_no_break(form.level) }}<br>
+
+                    <input type="submit" value="Submit" class="btn-success"
+                           onclick="this.form.submit(); this.disabled = true; this.value = 'Submitting...';">
+
+                </form>
+            </div>
+        </div>
+    {% elif object=="dog" %}
+         <div class="container-fluid bg-light-grey text-black">
+            <div class="col-sm-8 p-1">
+                Add new {{ object }} <br>
+                <form method="post">
+                    {{ form.csrf_token }}
+                    {{ render_field_no_break(form.name) }}<br>
+                    {{ render_field_no_break(form.age) }}<br>
+                    {{ render_field_no_break(form.breed) }}<br>
+
+                    <input type="submit" value="Submit" class="btn-success"
+                           onclick="this.form.submit(); this.disabled = true; this.value = 'Submitting...';">
+
+                </form>
+            </div>
+        </div>
+    {% else %}
+        INVALID OBJECT
+    {% endif %}
+{% endblock %}

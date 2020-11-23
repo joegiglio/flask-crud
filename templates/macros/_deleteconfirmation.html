@@ -1,8 +1,11 @@
-{% macro delete_item(my_id, my_username) %}
+{% macro delete_item(object, my_id, my_username) %}
 <!-- Modal -->
     <!--
         <a class="text-white" href="#" data-toggle="modal" data-target="#deleteConfirmation-{{ my_id }}">xDelete</a>
     -->
+{% if object=="user" %}
+{% else %}
+{% endif %}
 
 <a href="{{ url_for('delete_user', my_id = my_id) }}" data-toggle="modal" data-target="#deleteConfirmation-{{ my_id }}">
     <i class="fas fa-trash"></i>

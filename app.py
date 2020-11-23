@@ -2,9 +2,9 @@
 
 from flask import Flask, render_template, redirect, url_for, request, flash, session, render_template_string
 from flask_wtf import FlaskForm, RecaptchaField
-from wtforms import StringField, PasswordField, BooleanField, TextAreaField, SelectField, HiddenField
+from wtforms import StringField, PasswordField, BooleanField, TextAreaField, SelectField, HiddenField, IntegerField
 from flask_wtf.file import FileField, FileAllowed, FileRequired
-from wtforms.validators import InputRequired, Email, Length, EqualTo, Regexp, DataRequired
+from wtforms.validators import InputRequired, Email, Length, NumberRange, EqualTo, Regexp, DataRequired
 from datetime import datetime
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import exc, func, MetaData
@@ -95,6 +95,39 @@ class UserSortForm(FlaskForm):
     ])
 
 
+class CreateDogForm(FlaskForm):
+    name = StringField('Name', validators=[
+        InputRequired(),
+        Length(message="Name must be between 1 and 20 characters",
+               min=1, max=20)
+    ])
+
+    age = IntegerField('Age', validators=[
+        InputRequired(),
+        NumberRange(message="Age must be between 1 and 30",
+                    min=1, max=30)
+    ])
+
+    breed = StringField('Breed', validators=[
+        InputRequired(),
+        Length(message="Breed must be between 1 and 20 characters",
+               min=1, max=20)
+    ])
+
+
+class DogSortForm(FlaskForm):
+    sort_by = SelectField('Sort By', choices=[
+        ("id_d", "Newest"),
+        ("id", "Oldest"),
+        ("name", "Name"),
+        ("name_d", "Name Descending"),
+        ("age", "Lowest Age"),
+        ("age_d", "Highest Age"),
+        ("breed", "Breed"),
+        ("breed_d", "Breed Descending"),
+    ])
+
+
 #DB Models
 
 
@@ -113,6 +146,15 @@ class User(db.Model):
     #last_active = db.Column(db.DateTime())
     #notification_optin = db.Column(db.Boolean, server_default='1', default=True)
     level = db.Column(db.Integer)
+
+
+class Dog(db.Model):
+    # __table_args__ = {'sqlite_autoincrement': True}
+    id = db.Column(db.Integer, primary_key=True)
+    created_at = db.Column(db.DateTime())
+    name = db.Column(db.String(20), nullable=False, unique=True)
+    age = db.Column(db.Integer)
+    breed = db.Column(db.String(20), nullable=False)
 
 
 @app.route('/', methods=['GET', 'POST'])
@@ -144,12 +186,12 @@ def add_user():
         username_exists = User.query.filter(User.username == username).first()
         if username_exists:
             flash(u'Username already exists', 'alert-danger')
-            return render_template('adduser.html', form=form)
+            return render_template('add_item.html', form=form, object="user", title="Add User")
 
         email_exists = User.query.filter(User.email == email).first()
         if email_exists:
             flash(u'Email already exists', 'alert-danger')
-            return render_template('adduser.html', form=form)
+            return render_template('add_item.html', form=form, object="user", title="Add User")
 
         try:
             new_user = User(username=username,
@@ -161,20 +203,20 @@ def add_user():
             db.session.commit()
         except exc.IntegrityError:
             flash(u'DB Integrity error.', 'alert-danger')  # Should never occur since we already check for dupes.
-            return render_template('adduser.html')
+            return render_template('add_item.html', form=form, object="user", title="Add User")
         except exc.OperationalError:
             flash(u'DB failure.', 'alert-danger')  # Is DB down?  Does table exist?
-            return render_template('adduser.html')
+            return render_template('add_item.html', form=form, object="user", title="Add User")
         except Exception as e:
             print(e)
             flash(u'Unhandled database exception.', 'alert-danger')
-            return render_template('adduser.html')
+            return render_template('add_item.html', form=form, object="user", title="Add User")
 
         flash(u'User added', 'alert-success')
         return redirect((url_for("view_users")))
     else:
         # return "<h1>Error</h1>"
-        return render_template('adduser.html', form=form)
+        return render_template('add_item.html', form=form, object="user", title="Add User")
 
 
 @app.route('/view_users', methods=['GET', 'POST'])
@@ -209,9 +251,11 @@ def view_users():
         users = User.query.order_by(User.id.desc()).all()
         #print(db.session.query)
 
-    return render_template('view_users.html',
+    return render_template('view_items.html',
                            users=users,
-                           form=form
+                           form=form,
+                           title="View Users",
+                           object="users"
                            )
 
 
@@ -311,6 +355,98 @@ def delete_user(my_id):
     else:
         flash(u'User not found', 'alert-danger')
         return redirect((url_for("view_users")))
+
+
+@app.route('/add-dog/', methods=['GET', 'POST'])
+def add_dog():
+    form = CreateDogForm()
+    if form.validate_on_submit():
+        name = form.name.data.capitalize().strip()
+        age = form.age.data
+        breed = form.breed.data.capitalize().strip()
+
+        # Check for existence of name.  In the real world, it is OK to have
+        # more than one dog with the same name but I am just demonstrating
+        # a typical use case. - JG
+
+        name_exists = Dog.query.filter(Dog.name == name).first()
+        if name_exists:
+            flash(u'A dog with this name already exists', 'alert-danger')
+            return render_template('add_item.html', form=form, object="dog")
+
+        # Dog name does not exist.  Add to the database.
+
+        try:
+            new_dog = Dog(name=name,
+                            age=age,
+                            breed=breed,
+                            created_at=datetime.utcnow(),
+                            )
+            db.session.add(new_dog)
+            db.session.commit()
+        except exc.IntegrityError:
+            flash(u'DB Integrity error.', 'alert-danger')  # Should never occur since we already check for dupes.
+            return render_template('add_item.html', form=form, object="dog")
+        except exc.OperationalError:
+            flash(u'DB failure.', 'alert-danger')  # Is DB down?  Does table exist?
+            return render_template('add_item.html', form=form, object="dog")
+        except Exception as e:
+            print(e)
+            flash(u'Unhandled database exception.', 'alert-danger')
+            return render_template('add_item.html', form=form, object="dog")
+
+        flash(u'Dog added', 'alert-success')
+        return redirect((url_for("view_dogs")))
+    else:
+        # return "<h1>Error</h1>"
+        return render_template('add_item.html', form=form, object="dog")
+
+
+@app.route('/view_dogs', methods=['GET', 'POST'])
+def view_dogs():
+    form = DogSortForm()
+
+    if request.method == 'POST':
+        sort = form.sort_by.data
+        if sort == "id":
+            sort_by = "id"
+            dogs = Dog.query.order_by(sort_by).all()
+        elif sort == "id_d":
+            sort_by = "id"
+            dogs = Dog.query.order_by(getattr(Dog, sort_by).desc()).all()  # UGLY CODE!
+        elif sort == "name":
+            sort_by = "name"
+            dogs = Dog.query.order_by(sort_by).all()
+        elif sort == "name_d":
+            sort_by = "name"
+            dogs = Dog.query.order_by(getattr(Dog, sort_by).desc()).all()  # UGLY CODE!
+        elif sort == "age":
+            sort_by = "age"
+            dogs = Dog.query.order_by(sort_by).all()
+        elif sort == "age_d":
+            sort_by = "age"
+            dogs = Dog.query.order_by(getattr(Dog, sort_by).desc()).all()  # UGLY CODE!
+        elif sort == "breed":
+            sort_by = "breed"
+            dogs = Dog.query.order_by(sort_by).all()
+        elif sort == "breed_d":
+            sort_by = "breed"
+            dogs = Dog.query.order_by(getattr(Dog, sort_by).desc()).all()  # UGLY CODE!
+
+        else:
+            sort = "id"
+            dogs = Dog.query.order_by(Dog.id.desc()).all()
+    else:
+        # Sort by newest first if sort option not submitted.
+        dogs = Dog.query.order_by(Dog.id.desc()).all()
+        #print(db.session.query)
+
+    return render_template('view_items.html',
+                           dogs=dogs,
+                           form=form,
+                           title="View Dogs",
+                           object="dogs"
+                           )
 
 
 @app.route('/session_test')
