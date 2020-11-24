@@ -31,7 +31,7 @@
 
                 {% for dog in dogs %}
                     [
-                        <a href="{{ url_for('edit_user', my_id = dog.id)}}"><i class="fas fa-pencil-alt"></i> </a> |
+                        <a href="{{ url_for('edit_dog', my_id = dog.id)}}"><i class="fas fa-pencil-alt"></i> </a> |
                             {{ delete_item(object, dog.id, dog.name) }}
                     ]
                     {{ dog.id }} -
@@ -69,8 +69,8 @@
 
                 {% for user in users %}
                     [
-                        <a href="{{ url_for('edit_user', my_id = user.id)}}"><i class="fas fa-pencil-alt"></i> </a> |
-                            {{ delete_item(user.id, user.username) }}
+                        <a href="{{ url_for('edit_user', my_id = user.id)}}"><i class="fas fa-pencil-alt"></i></a> |
+                            {{ delete_item(object, user.id, user.username) }}
                     ]
                     {{ user.id }} -
                     {{ user.username }} -
