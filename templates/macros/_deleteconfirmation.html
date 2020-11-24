@@ -1,12 +1,19 @@
-{% macro delete_item(my_id, my_username) %}
+{% macro delete_item(object, my_id, my_username) %}
 <!-- Modal -->
     <!--
         <a class="text-white" href="#" data-toggle="modal" data-target="#deleteConfirmation-{{ my_id }}">xDelete</a>
     -->
+{% if object=="users" %}
+    <a href="{{ url_for('delete_user', my_id = my_id) }}" data-toggle="modal" data-target="#deleteConfirmation-{{ my_id }}">
+        <i class="fas fa-trash"></i></a>
+{% elif object=="dogs" %}
+    <a href="{{ url_for('delete_dog', my_id = my_id) }}" data-toggle="modal" data-target="#deleteConfirmation-{{ my_id }}">
+        <i class="fas fa-trash"></i></a>
+{% else %}
+    INVALID OBJECT
+{% endif %}
 
-<a href="{{ url_for('delete_user', my_id = my_id) }}" data-toggle="modal" data-target="#deleteConfirmation-{{ my_id }}">
-    <i class="fas fa-trash"></i>
-</a>
+
     <div class="modal fade" id="deleteConfirmation-{{ my_id }}" tabindex="-1" role="dialog"
      aria-labelledby="exampleModalCenterTitle"
      aria-hidden="true">
@@ -23,9 +30,17 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-primary"
-                        onclick='window.location.href="/delete-user/{{ my_id }}"'>Delete
-                </button>
+                {% if object=="users" %}
+                    <button type="button" class="btn btn-primary"
+                            onclick='window.location.href="/delete-user/{{ my_id }}"'>Delete
+                    </button>
+                {% elif object=="dogs" %}
+                    <button type="button" class="btn btn-primary"
+                            onclick='window.location.href="/delete-dog/{{ my_id }}"'>Delete
+                    </button>
+                {% else %}
+                    INVALID OBJECT
+                {% endif %}
             </div>
         </div>
     </div>

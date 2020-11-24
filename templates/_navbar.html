@@ -5,11 +5,20 @@
         </button>
         <div class="collapse navbar-collapse flex-column align-items-start ml-lg-2 ml-0" id="navbarCollapse">
             <ul class="navbar-nav ml-auto">
-                 <li class="nav-item">
-                    <a class="nav-link" href="{{ url_for('add_user') }}">Add User</a>
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('index') }}"><i class="fas fa-home"></i> Home</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" href="{{ url_for('view_users') }}">View Users</a>
+                    <a class="nav-link" href="{{ url_for('add_dog') }}">Add Dog</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('view_dogs') }}">View Dogs</a>
+                </li>
+                 <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('add_user') }}">ADMIN Add User</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('view_users') }}">ADMIN View Users</a>
                 </li>
             </ul>
         </div>

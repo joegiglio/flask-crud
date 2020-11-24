@@ -1,0 +1,95 @@
+{% from "macros/_deleteconfirmation.html" import delete_item %}
+
+{% extends "base.html" %}
+
+{% block title %}
+    {{ title }}
+{% endblock %}
+
+{% block content %}
+    {% if object=="dogs" %}
+        <div class="container-fluid bg-light-grey text-black">
+            <div class="col-sm-8 p-1">
+
+                {% if dogs | length == 0 %}
+                    There are no dogs yet!<br>
+                {% elif dogs | length == 1 %}
+                    There is one 1 dog.<br>
+                {% else %}
+                    There are {{ dogs | length }} dogs.<br>
+                {%  endif %}
+
+                {% if dogs | length > 1 %}
+                    <hr>
+                     <form method="post">
+                        Sort by: {{ form.sort_by }}
+
+                        <input type="submit" value="Submit" class="btn-success"
+                               onclick="this.form.submit(); this.disabled = true; this.value = 'Submitting...';">
+                    </form>
+                {% endif %}
+
+                {% for dog in dogs %}
+                    [
+                        <a href="{{ url_for('edit_dog', my_id = dog.id)}}"><i class="fas fa-pencil-alt"></i> </a> |
+                            {{ delete_item(object, dog.id, dog.name) }}
+                    ]
+                    {{ dog.id }} -
+                    {{ dog.name }} -
+                    {{ dog.breed }} -
+                    {{ dog.age}}
+                    <br>
+                {% endfor %}
+
+            </div>
+        </div>
+
+    {% else %}
+
+        <div class="container-fluid bg-light-grey text-black">
+            <div class="col-sm-8 p-1">
+
+                {% if users | length == 0 %}
+                    There are no users yet!<br>
+                {% elif users | length == 1 %}
+                    There is one 1 user.<br>
+                {% else %}
+                    There are {{ users | length }} users.<br>
+                {%  endif %}
+
+                {% if users | length > 1 %}
+                    <hr>
+                     <form method="post">
+                        Sort by: {{ form.sort_by }}
+
+                        <input type="submit" value="Submit" class="btn-success"
+                               onclick="this.form.submit(); this.disabled = true; this.value = 'Submitting...';">
+                    </form>
+                {% endif %}
+
+                {% for user in users %}
+                    [
+                        <a href="{{ url_for('edit_user', my_id = user.id)}}"><i class="fas fa-pencil-alt"></i></a> |
+                            {{ delete_item(object, user.id, user.username) }}
+                    ]
+                    {{ user.id }} -
+                    {{ user.username }} -
+                    {{ user.email }} -
+                    {% if user.level == 100 %}
+                        Normal User (100)
+                    {% elif user.level == 200 %}
+                        Admin (200)
+                    {% elif user.level == 300 %}
+                        Super Admin (300)
+                    {% else %}
+                        ERROR
+                    {% endif %}
+                    <br>
+                {% endfor %}
+
+            </div>
+        </div>
+
+    {% endif %}
+
+{% endblock %}
