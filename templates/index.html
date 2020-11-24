@@ -1,23 +1,13 @@
 {% extends "base.html" %}
 
 {% block title %}
-    Title here
+    {{ title }}
 {% endblock %}
 
 {% block content %}
-    Content here<br>
-    {{ initials }}<br>
-    {% if username %}
-        Hello, {{ username }}<br>
-    {% endif %}
-
-    <form method="post">
-
-        {{ form.csrf_token }}
-        {{ render_field_no_break(form.username) }}
-
-        <input type="submit" value="Submit" class="btn-success"
-               onclick="this.form.submit(); this.disabled = true; this.value = 'Submitting...';">
-
-    </form>
+    <div class="container-fluid bg-light-grey text-black">
+            <div class="col-sm-8 p-1">
+                {{ greeting }}
+            </div>
+        </div>
 {% endblock %}

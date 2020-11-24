@@ -10,6 +10,7 @@ from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import exc, func, MetaData
 from utils import session_dump
 from flask_migrate import Migrate
+from strings import greeting
 
 
 # Unused but may need them later!
@@ -18,7 +19,6 @@ from flask_migrate import Migrate
 #from itsdangerous import URLSafeTimedSerializer, SignatureExpired, BadTimeSignature
 #from utils import session_dump, is_user_admin
 #from decorators import session_required, admin_required, session_required_obj, session_required_review
-#from strings import companies_snippet
 #from flask_mail import Mail, Message
 
 
@@ -163,18 +163,10 @@ class Dog(db.Model):
 
 @app.route('/', methods=['GET', 'POST'])
 def index():
-    form = SampleForm()
 
-    if form.validate_on_submit():
-        print("yes")
-    else:
-        print("no")
+    # The 'greeting' string comes from one of the imports.
 
-    return render_template('index.html',
-                           form=form,
-                           initials="jg",
-                           username=form.username.data
-                           )
+    return render_template('index.html', title="Homepage", greeting=greeting)
 
 
 @app.route('/add-user/', methods=['GET', 'POST'])
@@ -315,9 +307,10 @@ def edit_user(my_id):
             else:
                 # print("update failed")
 
-                username = str(form.username.data.strip())
-                email = str(form.email.data.strip())
-                level = str(form.level.data.strip())
+                #TODO remove
+                #username = str(form.username.data.strip())
+                #email = str(form.email.data.strip())
+                #level = str(form.level.data.strip())
 
                 return render_template('edit_item.html',
                                        my_id=my_id,
@@ -527,7 +520,7 @@ def edit_dog(my_id):
                                    name=name,
                                    age=age,
                                    breed=breed,
-                                    object="dog"
+                                   object="dog"
                                    )
     else:
         flash(u'Dog not found', 'alert-danger')
