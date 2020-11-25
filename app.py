@@ -48,14 +48,11 @@ class SampleForm(FlaskForm):
 class LoginForm(FlaskForm):
     username = StringField('Username',
                            validators=[
-                               InputRequired(),
-                               Length(message="Username must be between 4 and 20 characters",
-                                      min=4, max=20)
+                               InputRequired()
                            ])
     password = PasswordField('Password', validators=[
-                                InputRequired(),
-                                Length(message="Password must be between 8 and 80 characters.",
-                                       min=8, max=80)])
+                                InputRequired()
+                            ])
     remember = BooleanField('Remember Me for 30 days')
 
 
@@ -140,13 +137,13 @@ class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     created_at = db.Column(db.DateTime())
     username = db.Column(db.String(20), nullable=False, unique=True)
-    #password = db.Column(db.String(255), nullable=False, server_default='')
+    password = db.Column(db.String(255), nullable=False, server_default='')
     #active = db.Column(db.Boolean(), nullable=False, server_default='0')
     email = db.Column(db.String(255), nullable=False, unique=True)
     #verification_token = db.Column(db.String(50), nullable=False)
     #pw_reset_token = db.Column(db.String(50))
     #confirmed_at = db.Column(db.DateTime())
-    #login_count = db.Column(db.Integer, server_default='0')
+    login_count = db.Column(db.Integer, server_default='0')
     #last_active = db.Column(db.DateTime())
     #notification_optin = db.Column(db.Boolean, server_default='1', default=True)
     level = db.Column(db.Integer)
@@ -167,6 +164,48 @@ def index():
     # The 'greeting' string comes from one of the imports.
 
     return render_template('index.html', title="Homepage", greeting=greeting)
+
+
+@app.route('/login/', methods=['GET', 'POST'])
+def login():
+    form = LoginForm()
+
+    if form.validate_on_submit():
+        username = form.username.data.strip()
+        password = form.password.data.strip()
+
+        #  Check for existence of matching username and password.
+        user = User.query.filter(User.username == username, User.password == password).first()
+        if user:
+            try:
+                user.login_count = user.login_count + 1
+                db.session.commit()
+
+                session["user_id"] = user.id
+                session["user_level"] = user.level
+
+            except exc.IntegrityError:
+                flash(u'DB Integrity error.', 'alert-danger')  # Should never occur since we already check for dupes.
+                return render_template('login.html', form=form, title="Login")
+            except exc.OperationalError:
+                flash(u'DB failure.', 'alert-danger')  # Is DB down?  Does table exist?
+                return render_template('login.html', form=form, title="Login")
+            except Exception as e:
+                print(e)
+                flash(u'Unhandled database exception.', 'alert-danger')
+                return render_template('login.html', form=form, title="Login")
+
+            flash(u'Login successful', 'alert-success')
+            return render_template('login.html', form=form, title="Login")
+            #return redirect(url_for("session_test"))
+
+        else:
+            flash(u'Invalid credentials', 'alert-danger')
+            return render_template('login.html', form=form, title="Login")
+    else:
+        # return "<h1>Error</h1>"
+        flash(u'Invalid credentials', 'alert-danger')
+        return render_template('login.html', form=form, title="Login")
 
 
 @app.route('/add-user/', methods=['GET', 'POST'])
@@ -547,7 +586,18 @@ def delete_dog(my_id):
 def session_test():
     #session["logged-in"] = True
 
-    return session_dump()
+    #return session_dump()
+    return render_template('session_dump.html',
+                           session_data=session_dump()
+                           )
+
+
+@app.route('/logout')
+def logout():
+    session.clear()
+
+    flash(u'You have been logged out.', 'alert-success')
+    return redirect(url_for('index'))
 
 
 @app.errorhandler(404)

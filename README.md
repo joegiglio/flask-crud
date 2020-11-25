@@ -1,6 +1,7 @@
-#Flask-CRUD
+**Flask-CRUD**
+
 A Python Flask CRUD application template with mySQL, Bootstrap, modal dialogs, Font Awesome icons,
-flask-migrate and SQLAlchemy. 
+flask-migrate, authentication, sessions and SQLAlchemy. 
 
 __Why start from scratch?__  
 
