@@ -10,11 +10,12 @@ from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import exc, func, MetaData
 from utils import session_dump
 from flask_migrate import Migrate
+from werkzeug.security import generate_password_hash, check_password_hash
 from strings import greeting
 
 
 # Unused but may need them later!
-#from werkzeug.security import generate_password_hash, check_password_hash
+
 #from datetime import datetime
 #from itsdangerous import URLSafeTimedSerializer, SignatureExpired, BadTimeSignature
 #from utils import session_dump, is_user_admin
@@ -79,6 +80,34 @@ class CreateUserForm(FlaskForm):
 
 class EditUserForm(CreateUserForm):
     pass
+
+
+class RegisterUserForm(FlaskForm):
+    email = StringField('Email Address', validators=[
+        InputRequired(),
+        Email(message="Invalid email address."),
+        Length(message="Email address must be between 5 and 50 characters",
+               min=5, max=50)
+    ])
+
+    username = StringField('Username', validators=[
+        InputRequired(),
+        Length(message="Username must be between 4 and 20 characters",
+               min=4, max=20)
+    ])
+
+    password = PasswordField('Password', validators=[
+        InputRequired(),
+        Length(message="Password must be between 5 and 50 characters",
+               min=5, max=50)
+    ])
+
+    verify_password = PasswordField('Verify Password', validators=[
+        InputRequired(),
+        EqualTo('password', message="Passwords must match."),
+        Length(message="Password must be between 5 and 50 characters",
+               min=5, max=50)
+    ])
 
 
 class UserSortForm(FlaskForm):
@@ -175,7 +204,16 @@ def login():
         password = form.password.data.strip()
 
         #  Check for existence of matching username and password.
-        user = User.query.filter(User.username == username, User.password == password).first()
+        #  Commented so we can use hashed passwords.
+        #user = User.query.filter(User.username == username, User.password == password).first()
+
+        user = User.query.filter(User.username == username).first()
+
+        if check_password_hash(user.password, password):
+            return "pass"
+        else:
+            return "not pass"
+
         if user:
             try:
                 user.login_count = user.login_count + 1
@@ -292,6 +330,55 @@ def view_users():
                            title="View Users",
                            object="users"
                            )
+
+
+@app.route('/register/', methods=['GET', 'POST'])
+def register():
+    form = RegisterUserForm()
+
+    if form.validate_on_submit():
+        username = form.username.data.strip()
+        email = form.email.data.strip()
+        password = form.password.data.strip()
+        hashed_password = generate_password_hash(password, method='sha256')
+        level = 100
+
+        #  Check for existence of username and email address.
+        username_exists = User.query.filter(User.username == username).first()
+        if username_exists:
+            flash(u'Username already exists', 'alert-danger')
+            return render_template('register.html', form=form, object="user", title="Register")
+
+        email_exists = User.query.filter(User.email == email).first()
+        if email_exists:
+            flash(u'Email already exists', 'alert-danger')
+            return render_template('register.html', form=form, object="user", title="Register")
+
+        try:
+            new_user = User(username=username,
+                            email=email,
+                            level=level,
+                            password=hashed_password,
+                            created_at=datetime.utcnow(),
+                            )
+            db.session.add(new_user)
+            db.session.commit()
+        except exc.IntegrityError:
+            flash(u'DB Integrity error.', 'alert-danger')  # Should never occur since we already check for dupes.
+            return render_template('register.html', form=form, object="user", title="Register")
+        except exc.OperationalError:
+            flash(u'DB failure.', 'alert-danger')  # Is DB down?  Does table exist?
+            return render_template('register.html', form=form, object="user", title="Register")
+        except Exception as e:
+            print(e)
+            flash(u'Unhandled database exception.', 'alert-danger')
+            return render_template('register.html', form=form, object="user", title="Register")
+
+        flash(u'User added', 'alert-success')
+        return redirect((url_for("view_users")))
+    else:
+        # return "<h1>Error</h1>"
+        return render_template('register.html', form=form, object="user", title="Register")
 
 
 @app.route('/edit-user/<int:my_id>/', methods=['GET', 'POST'])
