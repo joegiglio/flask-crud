@@ -210,11 +210,6 @@ def login():
         user = User.query.filter(User.username == username).first()
 
         if check_password_hash(user.password, password):
-            return "pass"
-        else:
-            return "not pass"
-
-        if user:
             try:
                 user.login_count = user.login_count + 1
                 db.session.commit()
