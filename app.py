@@ -8,26 +8,25 @@ from wtforms.validators import InputRequired, Email, Length, NumberRange, EqualT
 from datetime import datetime
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import exc, func, MetaData
-from utils import session_dump
+from utils import session_dump, send_verification_email
 from flask_migrate import Migrate
 from werkzeug.security import generate_password_hash, check_password_hash
+from itsdangerous import URLSafeTimedSerializer, SignatureExpired, BadTimeSignature, BadSignature
+# from flask_mail import Mail, Message
 from strings import greeting
+import config
 
 
 # Unused but may need them later!
 
-#from datetime import datetime
-#from itsdangerous import URLSafeTimedSerializer, SignatureExpired, BadTimeSignature
-#from utils import session_dump, is_user_admin
 #from decorators import session_required, admin_required, session_required_obj, session_required_review
-#from flask_mail import Mail, Message
 
 
 app = Flask(__name__)
 app.config.from_pyfile("config.py")
 #mail = Mail(app)
 
-#s = URLSafeTimedSerializer(app.config['SECRET_KEY'])
+s = URLSafeTimedSerializer(app.config['SECRET_KEY'])
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
 
@@ -167,15 +166,15 @@ class User(db.Model):
     created_at = db.Column(db.DateTime())
     username = db.Column(db.String(20), nullable=False, unique=True)
     password = db.Column(db.String(255), nullable=False, server_default='')
-    #active = db.Column(db.Boolean(), nullable=False, server_default='0')
     email = db.Column(db.String(255), nullable=False, unique=True)
-    #verification_token = db.Column(db.String(50), nullable=False)
-    #pw_reset_token = db.Column(db.String(50))
-    #confirmed_at = db.Column(db.DateTime())
+    verification_token = db.Column(db.String(50), nullable=False)
+    confirmed_at = db.Column(db.DateTime())
     login_count = db.Column(db.Integer, server_default='0')
-    #last_active = db.Column(db.DateTime())
-    #notification_optin = db.Column(db.Boolean, server_default='1', default=True)
+    last_active = db.Column(db.DateTime())
     level = db.Column(db.Integer)
+    active = db.Column(db.Boolean(), nullable=False, server_default='0')
+    # notification_optin = db.Column(db.Boolean, server_default='1', default=True)
+    # pw_reset_token = db.Column(db.String(50))
 
 
 class Dog(db.Model):
@@ -212,6 +211,7 @@ def login():
         if check_password_hash(user.password, password):
             try:
                 user.login_count = user.login_count + 1
+                user.last_active = datetime.utcnow()
                 db.session.commit()
 
                 session["user_id"] = user.id
@@ -337,6 +337,7 @@ def register():
         password = form.password.data.strip()
         hashed_password = generate_password_hash(password, method='sha256')
         level = 100
+        token = s.dumps(form.email.data, salt=app.config['SALT'])
 
         #  Check for existence of username and email address.
         username_exists = User.query.filter(User.username == username).first()
@@ -355,6 +356,7 @@ def register():
                             level=level,
                             password=hashed_password,
                             created_at=datetime.utcnow(),
+                            verification_token=token
                             )
             db.session.add(new_user)
             db.session.commit()
@@ -368,6 +370,8 @@ def register():
             print(e)
             flash(u'Unhandled database exception.', 'alert-danger')
             return render_template('register.html', form=form, object="user", title="Register")
+
+        send_verification_email(email, token)
 
         flash(u'User added', 'alert-success')
         return redirect((url_for("view_users")))
@@ -680,6 +684,37 @@ def logout():
 
     flash(u'You have been logged out.', 'alert-success')
     return redirect(url_for('index'))
+
+
+@app.route('/confirm-email/<token>/<my_email>', methods=['GET'])
+def confirm_email(token, my_email):
+    try:
+        s.loads(token, salt=config.SALT, max_age=86400)  #86400=24 hours
+        #  The token works.  Now verify it belongs to email address
+        #  and updated the relevant fields.
+
+        user = User.query.filter(User.email == my_email).first()
+        #  user = queries.validate_user(User, my_email)
+        if user:
+            user.active = True
+            user.confirmed_at = datetime.utcnow()
+            db.session.commit()
+
+            flash(u'Activation successful!  Please login below.', 'alert-success')
+            return render_template('login.html', form=LoginForm())
+        else:   # Email address does not exist.  Hacker?
+            flash(u'Invalid email address.', 'alert-danger')
+            return render_template('login.html', form=LoginForm())
+
+    except SignatureExpired:
+        flash(u'ERROR: Token has expired (1).  Try logging in again.', 'alert-danger')
+        return render_template('login.html', form=LoginForm())
+    except BadTimeSignature:
+        flash(u'ERROR: Token is invalid (2).', 'alert-danger')
+        return render_template('login.html', form=LoginForm())
+    except BadSignature:
+        flash(u'ERROR: Token is invalid (3).', 'alert-danger')
+        return render_template('login.html', form=LoginForm())
 
 
 @app.errorhandler(404)

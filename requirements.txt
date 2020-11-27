@@ -1,4 +1,5 @@
 alembic==1.4.3
+blinker==1.4
 certifi==2020.4.5.1
 chardet==3.0.4
 Click==7.0
@@ -6,6 +7,8 @@ dominate==2.4.0
 Flask==1.1.1
 Flask-Bootstrap==3.3.7.1
 Flask-Login==0.4.1
+Flask-Mail==0.9.0  #0.9.1 is the latest but it thrown an exception which was somehow never fixed.
+                    # See https://stackoverflow.com/questions/28466384/python-flask-email-keyerror-keyerror-mail
 Flask-Migrate==2.5.3
 Flask-SQLAlchemy==2.4.1
 Flask-WTF==0.14.2
