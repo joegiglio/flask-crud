@@ -209,29 +209,32 @@ def login():
         user = User.query.filter(User.username == username).first()
 
         if check_password_hash(user.password, password):
-            try:
-                user.login_count = user.login_count + 1
-                user.last_active = datetime.utcnow()
-                db.session.commit()
+            if user.active:
+                try:
+                    user.login_count = user.login_count + 1
+                    user.last_active = datetime.utcnow()
+                    db.session.commit()
 
-                session["user_id"] = user.id
-                session["user_level"] = user.level
+                    session["user_id"] = user.id
+                    session["user_level"] = user.level
 
-            except exc.IntegrityError:
-                flash(u'DB Integrity error.', 'alert-danger')  # Should never occur since we already check for dupes.
+                except exc.IntegrityError:
+                    flash(u'DB Integrity error.', 'alert-danger')  # Should never occur since we already check for dupes.
+                    return render_template('login.html', form=form, title="Login")
+                except exc.OperationalError:
+                    flash(u'DB failure.', 'alert-danger')  # Is DB down?  Does table exist?
+                    return render_template('login.html', form=form, title="Login")
+                except Exception as e:
+                    print(e)
+                    flash(u'Unhandled database exception.', 'alert-danger')
+                    return render_template('login.html', form=form, title="Login")
+
+                flash(u'Login successful', 'alert-success')
                 return render_template('login.html', form=form, title="Login")
-            except exc.OperationalError:
-                flash(u'DB failure.', 'alert-danger')  # Is DB down?  Does table exist?
+                #return redirect(url_for("session_test"))
+            else:
+                flash(u'This account has not been activated.', 'alert-danger')
                 return render_template('login.html', form=form, title="Login")
-            except Exception as e:
-                print(e)
-                flash(u'Unhandled database exception.', 'alert-danger')
-                return render_template('login.html', form=form, title="Login")
-
-            flash(u'Login successful', 'alert-success')
-            return render_template('login.html', form=form, title="Login")
-            #return redirect(url_for("session_test"))
-
         else:
             flash(u'Invalid credentials', 'alert-danger')
             return render_template('login.html', form=form, title="Login")
