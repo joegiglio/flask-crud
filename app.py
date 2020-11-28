@@ -109,6 +109,15 @@ class RegisterUserForm(FlaskForm):
     ])
 
 
+class ValidateEmailForm(FlaskForm):
+    email = StringField('Email Address', validators=[
+        InputRequired(),
+        Email(message="Invalid email address."),
+        Length(message="Email address must be between 5 and 50 characters",
+               min=5, max=50)
+    ])
+
+
 class UserSortForm(FlaskForm):
     sort_by = SelectField('Sort By', choices=[
         ("id_d", "Newest"),
@@ -234,7 +243,13 @@ def login():
                 #return redirect(url_for("session_test"))
             else:
                 flash(u'This account has not been activated.', 'alert-danger')
-                return render_template('login.html', form=form, title="Login")
+                # return render_template('login.html', form=form, title="Login")
+                form = ValidateEmailForm()
+                return render_template('register.html',
+                                       form=form,
+                                       title="Activate",
+                                       object="email",
+                                       email=user.email)
         else:
             flash(u'Invalid credentials', 'alert-danger')
             return render_template('login.html', form=form, title="Login")
@@ -244,19 +259,98 @@ def login():
         return render_template('login.html', form=form, title="Login")
 
 
-@app.route('/add-user/', methods=['GET', 'POST'])
-def add_user():
-    form = CreateUserForm()
+@app.route('/register/', methods=['GET', 'POST'])
+def register():
+    form = RegisterUserForm()
 
     if form.validate_on_submit():
         username = form.username.data.strip()
         email = form.email.data.strip()
-        level = form.level.data.strip()
+        password = form.password.data.strip()
+        hashed_password = generate_password_hash(password, method='sha256')
+        level = 100
+        token = s.dumps(form.email.data, salt=app.config['SALT'])
 
         #  Check for existence of username and email address.
         username_exists = User.query.filter(User.username == username).first()
         if username_exists:
             flash(u'Username already exists', 'alert-danger')
+            return render_template('register.html', form=form, object="user", title="Register")
+
+        email_exists = User.query.filter(User.email == email).first()
+        if email_exists:
+            flash(u'Email already exists', 'alert-danger')
+            return render_template('register.html', form=form, object="user", title="Register")
+
+        try:
+            new_user = User(username=username,
+                            email=email,
+                            level=level,
+                            password=hashed_password,
+                            created_at=datetime.utcnow(),
+                            verification_token=token
+                            )
+            db.session.add(new_user)
+            db.session.commit()
+        except exc.IntegrityError:
+            flash(u'DB Integrity error.', 'alert-danger')  # Should never occur since we already check for dupes.
+            return render_template('register.html', form=form, object="user", title="Register")
+        except exc.OperationalError:
+            flash(u'DB failure.', 'alert-danger')  # Is DB down?  Does table exist?
+            return render_template('register.html', form=form, object="user", title="Register")
+        except Exception as e:
+            print(e)
+            flash(u'Unhandled database exception.', 'alert-danger')
+            return render_template('register.html', form=form, object="user", title="Register")
+
+        send_verification_email(email, token)
+
+        flash(u'User added', 'alert-success')
+        return redirect((url_for("view_users")))
+    else:
+        # return "<h1>Error</h1>"
+        return render_template('register.html', form=form, object="user", title="Register")
+
+
+@app.route('/activate/', methods=['GET', 'POST'])
+def activate():
+    form = ValidateEmailForm()
+
+    if form.validate_on_submit():
+        email = form.email.data.strip()
+        token = s.dumps(form.email.data, salt=app.config['SALT'])
+
+        send_verification_email(email, token)
+
+        try:
+            new_user = User(username=username,
+                            email=email,
+                            level=level,
+                            password=hashed_password,
+                            created_at=datetime.utcnow(),
+                            verification_token=token
+                            )
+            db.session.add(new_user)
+            db.session.commit()
+        except exc.IntegrityError:
+            flash(u'DB Integrity error.', 'alert-danger')  # Should never occur since we already check for dupes.
+            return render_template('register.html', form=form, object="user", title="Register")
+        except exc.OperationalError:
+            flash(u'DB failure.', 'alert-danger')  # Is DB down?  Does table exist?
+            return render_template('register.html', form=form, object="user", title="Register")
+        except Exception as e:
+            print(e)
+            flash(u'Unhandled database exception.', 'alert-danger')
+            return render_template('register.html', form=form, object="user", title="Register")
+
+        flash(u'User added', 'alert-success')
+        return redirect((url_for("view_users")))
+
+
+        #  Check for existence of username and email address.
+        email_exists = User.query.filter(User.email == email).first()
+        if email_exists:
+            flash(u'Email already exists', 'alert-danger')
             return render_template('add_item.html', form=form, object="user", title="Add User")
 
         email_exists = User.query.filter(User.email == email).first()
@@ -330,8 +424,8 @@ def view_users():
                            )
 
 
-@app.route('/register/', methods=['GET', 'POST'])
-def register():
+@app.route('/add-user/', methods=['GET', 'POST'])
+def add_user():
     form = RegisterUserForm()
 
     if form.validate_on_submit():
