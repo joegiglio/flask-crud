@@ -206,6 +206,7 @@ def index():
 @app.route('/login/', methods=['GET', 'POST'])
 def login():
     form = LoginForm()
+    #request.method == 'POST':
 
     if form.validate_on_submit():
         username = form.username.data.strip()
@@ -217,7 +218,7 @@ def login():
 
         user = User.query.filter(User.username == username).first()
 
-        if check_password_hash(user.password, password):
+        if user and check_password_hash(user.password, password):
             if user.active:
                 try:
                     user.login_count = user.login_count + 1
@@ -245,7 +246,7 @@ def login():
                 flash(u'This account has not been activated.', 'alert-danger')
                 # return render_template('login.html', form=form, title="Login")
                 form = ValidateEmailForm()
-                session["user_id"] = user.id
+                session["validate_user_id"] = user.id
 
                 return render_template('register.html',
                                        form=form,
@@ -257,7 +258,7 @@ def login():
             return render_template('login.html', form=form, title="Login")
     else:
         # return "<h1>Error</h1>"
-        flash(u'Invalid credentials', 'alert-danger')
+        # flash(u'Invalid credentials', 'alert-danger')
         return render_template('login.html', form=form, title="Login")
 
 
@@ -319,7 +320,7 @@ def activate():
     form = ValidateEmailForm()
 
     if form.validate_on_submit():
-        my_id = session["user_id"]
+        my_id = session["validate_user_id"]
         email = form.email.data.strip()
         token = s.dumps(form.email.data, salt=app.config['SALT'])
 
