@@ -176,7 +176,7 @@ class User(db.Model):
     username = db.Column(db.String(20), nullable=False, unique=True)
     password = db.Column(db.String(255), nullable=False, server_default='')
     email = db.Column(db.String(255), nullable=False, unique=True)
-    verification_token = db.Column(db.String(50), nullable=False)
+    verification_token = db.Column(db.String(100), nullable=False)
     confirmed_at = db.Column(db.DateTime())
     login_count = db.Column(db.Integer, server_default='0')
     last_active = db.Column(db.DateTime())
@@ -245,6 +245,8 @@ def login():
                 flash(u'This account has not been activated.', 'alert-danger')
                 # return render_template('login.html', form=form, title="Login")
                 form = ValidateEmailForm()
+                session["user_id"] = user.id
+
                 return render_template('register.html',
                                        form=form,
                                        title="Activate",
@@ -317,71 +319,50 @@ def activate():
     form = ValidateEmailForm()
 
     if form.validate_on_submit():
+        my_id = session["user_id"]
         email = form.email.data.strip()
         token = s.dumps(form.email.data, salt=app.config['SALT'])
 
+        user = User.query.filter(User.id == my_id).first()
+        user.verification_token = token
+
+        # print(token, len(token))
+        db.session.commit()
+
         send_verification_email(email, token)
 
-        try:
-            new_user = User(username=username,
-                            email=email,
-                            level=level,
-                            password=hashed_password,
-                            created_at=datetime.utcnow(),
-                            verification_token=token
-                            )
-            db.session.add(new_user)
-            db.session.commit()
-        except exc.IntegrityError:
-            flash(u'DB Integrity error.', 'alert-danger')  # Should never occur since we already check for dupes.
-            return render_template('register.html', form=form, object="user", title="Register")
-        except exc.OperationalError:
-            flash(u'DB failure.', 'alert-danger')  # Is DB down?  Does table exist?
-            return render_template('register.html', form=form, object="user", title="Register")
-        except Exception as e:
-            print(e)
-            flash(u'Unhandled database exception.', 'alert-danger')
-            return render_template('register.html', form=form, object="user", title="Register")
+        flash(u'Please check your email for a verification link.', 'alert-success')
+        return redirect((url_for("index")))
 
-        flash(u'User added', 'alert-success')
-        return redirect((url_for("view_users")))
+        # TODO:Figure out session problem.
 
-
-        #  Check for existence of username and email address.
-        email_exists = User.query.filter(User.email == email).first()
-        if email_exists:
-            flash(u'Email already exists', 'alert-danger')
-            return render_template('add_item.html', form=form, object="user", title="Add User")
-
-        email_exists = User.query.filter(User.email == email).first()
-        if email_exists:
-            flash(u'Email already exists', 'alert-danger')
-            return render_template('add_item.html', form=form, object="user", title="Add User")
-
-        try:
-            new_user = User(username=username,
-                            email=email,
-                            level=level,
-                            created_at=datetime.utcnow(),
-                            )
-            db.session.add(new_user)
-            db.session.commit()
-        except exc.IntegrityError:
-            flash(u'DB Integrity error.', 'alert-danger')  # Should never occur since we already check for dupes.
-            return render_template('add_item.html', form=form, object="user", title="Add User")
-        except exc.OperationalError:
-            flash(u'DB failure.', 'alert-danger')  # Is DB down?  Does table exist?
-            return render_template('add_item.html', form=form, object="user", title="Add User")
-        except Exception as e:
-            print(e)
-            flash(u'Unhandled database exception.', 'alert-danger')
-            return render_template('add_item.html', form=form, object="user", title="Add User")
-
-        flash(u'User added', 'alert-success')
-        return redirect((url_for("view_users")))
-    else:
-        # return "<h1>Error</h1>"
+    else: #form errors
+        return render_template('register.html',
+                               form=form,
+                               title="Activate",
+                               object="email")
         return render_template('add_item.html', form=form, object="user", title="Add User")
+
+        # try:
+        #     new_user = User(username=username,
+        #                     email=email,
+        #                     level=level,
+        #                     created_at=datetime.utcnow(),
+        #                     )
+        #     db.session.add(new_user)
+        #     db.session.commit()
+        # except exc.IntegrityError:
+        #     flash(u'DB Integrity error.', 'alert-danger')  # Should never occur since we already check for dupes.
+        #     return render_template('add_item.html', form=form, object="user", title="Add User")
+        # except exc.OperationalError:
+        #     flash(u'DB failure.', 'alert-danger')  # Is DB down?  Does table exist?
+        #     return render_template('add_item.html', form=form, object="user", title="Add User")
+        # except Exception as e:
+        #     print(e)
+        #     flash(u'Unhandled database exception.', 'alert-danger')
+        #     return render_template('add_item.html', form=form, object="user", title="Add User")
+        #
+        # flash(u'User added', 'alert-success')
 
 
 @app.route('/view_users', methods=['GET', 'POST'])
@@ -787,6 +768,7 @@ def logout():
 def confirm_email(token, my_email):
     try:
         s.loads(token, salt=config.SALT, max_age=86400)  #86400=24 hours
+
         #  The token works.  Now verify it belongs to email address
         #  and updated the relevant fields.
 
@@ -798,7 +780,7 @@ def confirm_email(token, my_email):
             db.session.commit()
 
             flash(u'Activation successful!  Please login below.', 'alert-success')
-            return render_template('login.html', form=LoginForm())
+            return redirect(url_for('login'))
         else:   # Email address does not exist.  Hacker?
             flash(u'Invalid email address.', 'alert-danger')
             return render_template('login.html', form=LoginForm())
