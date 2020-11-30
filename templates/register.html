@@ -6,16 +6,16 @@
 
 {% block content %}
     {% if object=="user" %}
-        {# NO LONGER USED.  MOVED TO REGISTER.HTML AND /REGISTER URL. #}
         <div class="container-fluid bg-light-grey text-black">
             <div class="col-sm-8 p-1">
-                Add new {{ object }} <br>
+                Register new user <br>
                 <form method="post">
 
                     {{ form.csrf_token }}
                     {{ render_field_no_break(form.username) }}<br>
                     {{ render_field_no_break(form.email) }}<br>
-                    {{ render_field_no_break(form.level) }}<br>
+                    {{ render_field_no_break(form.password) }}<br>
+                    {{ render_field_no_break(form.verify_password) }}<br>
 
                     <input type="submit" value="Submit" class="btn-success"
                            onclick="this.form.submit(); this.disabled = true; this.value = 'Submitting...';">
@@ -23,15 +23,15 @@
                 </form>
             </div>
         </div>
-    {% elif object=="dog" %}
-         <div class="container-fluid bg-light-grey text-black">
+    {% elif object=="email" %}
+        <div class="container-fluid bg-light-grey text-black">
             <div class="col-sm-8 p-1">
-                Add new {{ object }} <br>
-                <form method="post">
+                An activation link was sent to your email address but was never clicked.<br>
+                Please verify or update your email address below. <br>
+                <form method="post" action="{{ url_for("activate") }}">
+
                     {{ form.csrf_token }}
-                    {{ render_field_no_break(form.name) }}<br>
-                    {{ render_field_no_break(form.age) }}<br>
-                    {{ render_field_no_break(form.breed) }}<br>
+                    {{ render_field_no_break(form.email, value=email) }}<br>
 
                     <input type="submit" value="Submit" class="btn-success"
                            onclick="this.form.submit(); this.disabled = true; this.value = 'Submitting...';">

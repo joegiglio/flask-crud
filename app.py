@@ -8,30 +8,29 @@ from wtforms.validators import InputRequired, Email, Length, NumberRange, EqualT
 from datetime import datetime
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import exc, func, MetaData
-from utils import session_dump
+from utils import session_dump, send_verification_email
 from flask_migrate import Migrate
+from werkzeug.security import generate_password_hash, check_password_hash
+from itsdangerous import URLSafeTimedSerializer, SignatureExpired, BadTimeSignature, BadSignature
+# from flask_mail import Mail, Message
 from strings import greeting
+import config
 
 
 # Unused but may need them later!
-#from werkzeug.security import generate_password_hash, check_password_hash
-#from datetime import datetime
-#from itsdangerous import URLSafeTimedSerializer, SignatureExpired, BadTimeSignature
-#from utils import session_dump, is_user_admin
+
 #from decorators import session_required, admin_required, session_required_obj, session_required_review
-#from flask_mail import Mail, Message
 
 
 app = Flask(__name__)
 app.config.from_pyfile("config.py")
 #mail = Mail(app)
 
-#s = URLSafeTimedSerializer(app.config['SECRET_KEY'])
+s = URLSafeTimedSerializer(app.config['SECRET_KEY'])
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
 
-
-#   TODO: Move models to separate file.  I was having inheritace issues with db.create_all.  Need to revisit.
+#   TODO: Move models to separate file.  I was having inheritance issues with db.create_all.  Need to revisit.
 
 #Form Models
 
@@ -48,14 +47,11 @@ class SampleForm(FlaskForm):
 class LoginForm(FlaskForm):
     username = StringField('Username',
                            validators=[
-                               InputRequired(),
-                               Length(message="Username must be between 4 and 20 characters",
-                                      min=4, max=20)
+                               InputRequired()
                            ])
     password = PasswordField('Password', validators=[
-                                InputRequired(),
-                                Length(message="Password must be between 8 and 80 characters.",
-                                       min=8, max=80)])
+                                InputRequired()
+                            ])
     remember = BooleanField('Remember Me for 30 days')
 
 
@@ -82,6 +78,43 @@ class CreateUserForm(FlaskForm):
 
 class EditUserForm(CreateUserForm):
     pass
+
+
+class RegisterUserForm(FlaskForm):
+    email = StringField('Email Address', validators=[
+        InputRequired(),
+        Email(message="Invalid email address."),
+        Length(message="Email address must be between 5 and 50 characters",
+               min=5, max=50)
+    ])
+
+    username = StringField('Username', validators=[
+        InputRequired(),
+        Length(message="Username must be between 4 and 20 characters",
+               min=4, max=20)
+    ])
+
+    password = PasswordField('Password', validators=[
+        InputRequired(),
+        Length(message="Password must be between 5 and 50 characters",
+               min=5, max=50)
+    ])
+
+    verify_password = PasswordField('Verify Password', validators=[
+        InputRequired(),
+        EqualTo('password', message="Passwords must match."),
+        Length(message="Password must be between 5 and 50 characters",
+               min=5, max=50)
+    ])
+
+
+class ValidateEmailForm(FlaskForm):
+    email = StringField('Email Address', validators=[
+        InputRequired(),
+        Email(message="Invalid email address."),
+        Length(message="Email address must be between 5 and 50 characters",
+               min=5, max=50)
+    ])
 
 
 class UserSortForm(FlaskForm):
@@ -140,16 +173,16 @@ class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     created_at = db.Column(db.DateTime())
     username = db.Column(db.String(20), nullable=False, unique=True)
-    #password = db.Column(db.String(255), nullable=False, server_default='')
-    #active = db.Column(db.Boolean(), nullable=False, server_default='0')
+    password = db.Column(db.String(255), nullable=False, server_default='')
     email = db.Column(db.String(255), nullable=False, unique=True)
-    #verification_token = db.Column(db.String(50), nullable=False)
-    #pw_reset_token = db.Column(db.String(50))
-    #confirmed_at = db.Column(db.DateTime())
-    #login_count = db.Column(db.Integer, server_default='0')
-    #last_active = db.Column(db.DateTime())
-    #notification_optin = db.Column(db.Boolean, server_default='1', default=True)
+    verification_token = db.Column(db.String(100), nullable=False)
+    confirmed_at = db.Column(db.DateTime())
+    login_count = db.Column(db.Integer, server_default='0')
+    last_active = db.Column(db.DateTime())
     level = db.Column(db.Integer)
+    active = db.Column(db.Boolean(), nullable=False, server_default='0')
+    # notification_optin = db.Column(db.Boolean, server_default='1', default=True)
+    # pw_reset_token = db.Column(db.String(50))
 
 
 class Dog(db.Model):
@@ -169,50 +202,162 @@ def index():
     return render_template('index.html', title="Homepage", greeting=greeting)
 
 
-@app.route('/add-user/', methods=['GET', 'POST'])
-def add_user():
-    form = CreateUserForm()
+@app.route('/login/', methods=['GET', 'POST'])
+def login():
+    form = LoginForm()
+
+    if form.validate_on_submit():
+        username = form.username.data.strip()
+        password = form.password.data.strip()
+
+        #  Check for existence of matching username and password.
+        #  Commented so we can use hashed passwords.
+        #user = User.query.filter(User.username == username, User.password == password).first()
+
+        user = User.query.filter(User.username == username).first()
+
+        if user and check_password_hash(user.password, password):   # User exists and hashed password is valid.
+            if user.active:
+                try:
+                    user.login_count = user.login_count + 1
+                    user.last_active = datetime.utcnow()
+                    db.session.commit()
+
+                    session["user_id"] = user.id
+                    session["user_level"] = user.level
+
+                except exc.IntegrityError:
+                    flash(u'DB Integrity error.', 'alert-danger')  # Should never occur since we already check for dupes.
+                    return render_template('login.html', form=form, title="Login")
+                except exc.OperationalError:
+                    flash(u'DB failure.', 'alert-danger')  # Is DB down?  Does table exist?
+                    return render_template('login.html', form=form, title="Login")
+                except Exception as e:
+                    print(e)
+                    flash(u'Unhandled database exception.', 'alert-danger')
+                    return render_template('login.html', form=form, title="Login")
+
+                flash(u'Login successful', 'alert-success')
+                return render_template('profile.html', title="Profile")
+            else:
+                flash(u'This account has not been activated.', 'alert-danger')
+                form = ValidateEmailForm()
+                session["validate_user_id"] = user.id
+
+                return render_template('register.html',
+                                       form=form,
+                                       title="Activate",
+                                       object="email",
+                                       email=user.email)
+        else:
+            flash(u'Invalid credentials', 'alert-danger')
+            return render_template('login.html', form=form, title="Login")
+    else:
+        # return "<h1>Error</h1>"
+        # flash(u'Invalid credentials', 'alert-danger')
+        return render_template('login.html', form=form, title="Login")
+
+
+@app.route('/register/', methods=['GET', 'POST'])
+def register():
+    form = RegisterUserForm()
 
     if form.validate_on_submit():
         username = form.username.data.strip()
         email = form.email.data.strip()
-        level = form.level.data.strip()
+        password = form.password.data.strip()
+        hashed_password = generate_password_hash(password, method='sha256')
+        level = 100
+        token = s.dumps(form.email.data, salt=app.config['SALT'])
 
         #  Check for existence of username and email address.
         username_exists = User.query.filter(User.username == username).first()
         if username_exists:
             flash(u'Username already exists', 'alert-danger')
-            return render_template('add_item.html', form=form, object="user", title="Add User")
+            return render_template('register.html', form=form, object="user", title="Register")
 
         email_exists = User.query.filter(User.email == email).first()
         if email_exists:
-            flash(u'Email already exists', 'alert-danger')
-            return render_template('add_item.html', form=form, object="user", title="Add User")
+            flash(u'Email address already exists', 'alert-danger')
+            return render_template('register.html', form=form, object="user", title="Register")
 
         try:
             new_user = User(username=username,
                             email=email,
                             level=level,
+                            password=hashed_password,
                             created_at=datetime.utcnow(),
+                            verification_token=token
                             )
             db.session.add(new_user)
             db.session.commit()
+
+            send_verification_email(email, token)
+
+            flash(u'User added.  Please check your email address for an activation link.', 'alert-success')
+            #return redirect((url_for("view_users")))
+            return redirect((url_for("index")))
         except exc.IntegrityError:
             flash(u'DB Integrity error.', 'alert-danger')  # Should never occur since we already check for dupes.
-            return render_template('add_item.html', form=form, object="user", title="Add User")
+            return render_template('register.html', form=form, object="user", title="Register")
         except exc.OperationalError:
             flash(u'DB failure.', 'alert-danger')  # Is DB down?  Does table exist?
-            return render_template('add_item.html', form=form, object="user", title="Add User")
+            return render_template('register.html', form=form, object="user", title="Register")
         except Exception as e:
             print(e)
             flash(u'Unhandled database exception.', 'alert-danger')
-            return render_template('add_item.html', form=form, object="user", title="Add User")
+            return render_template('register.html', form=form, object="user", title="Register")
 
-        flash(u'User added', 'alert-success')
-        return redirect((url_for("view_users")))
     else:
         # return "<h1>Error</h1>"
-        return render_template('add_item.html', form=form, object="user", title="Add User")
+        return render_template('register.html', form=form, object="user", title="Register")
+
+
+@app.route('/activate/', methods=['GET', 'POST'])
+def activate():
+    # Called if account tries to login and the email address was not yet activated.
+    form = ValidateEmailForm()
+
+    if form.validate_on_submit():
+        my_id = session["validate_user_id"]
+        email = form.email.data.strip()
+        token = s.dumps(form.email.data, salt=app.config['SALT'])
+
+        user = User.query.filter(User.id == my_id).first()
+
+        # Make sure submitted email address does not belong to another user.
+        if user.email == email:
+            user.verification_token = token
+            # print(token, len(token))
+            db.session.commit()
+
+            send_verification_email(email, token)
+
+            flash(u'Please check your email for a verification link.', 'alert-success')
+            return redirect((url_for("index")))
+        else:
+            email_exists = User.query.filter(User.email == email).first()
+
+            if email_exists:    # This email already exists in the DB and is used by another user.  Show error.
+                flash(u'This email address is already in use.  Please submit another.', 'alert-danger')
+
+                return render_template('register.html', title="Register", object="email", form=form, email=email)
+            else:   # This email address does not exist in the DB.  Let this user register it.
+                user.verification_token = token
+                user.email = email
+                # print(token, len(token))
+                db.session.commit()
+
+                send_verification_email(email, token)
+
+                flash(u'Please check your email for a verification link.', 'alert-success')
+                return redirect((url_for("index")))
+
+    else:   # form errors
+        return render_template('register.html',
+                               form=form,
+                               title="Activate",
+                               object="email")
 
 
 @app.route('/view_users', methods=['GET', 'POST'])
@@ -253,6 +398,60 @@ def view_users():
                            title="View Users",
                            object="users"
                            )
+
+
+@app.route('/add-user/', methods=['GET', 'POST'])
+def add_user():
+    #  NO LONGER USER.  REPLACED WITH /REGISTER.
+    form = RegisterUserForm()
+
+    if form.validate_on_submit():
+        username = form.username.data.strip()
+        email = form.email.data.strip()
+        password = form.password.data.strip()
+        hashed_password = generate_password_hash(password, method='sha256')
+        level = 100
+        token = s.dumps(form.email.data, salt=app.config['SALT'])
+
+        #  Check for existence of username and email address.
+        username_exists = User.query.filter(User.username == username).first()
+        if username_exists:
+            flash(u'Username already exists', 'alert-danger')
+            return render_template('register.html', form=form, object="user", title="Register")
+
+        email_exists = User.query.filter(User.email == email).first()
+        if email_exists:
+            flash(u'Email already exists', 'alert-danger')
+            return render_template('register.html', form=form, object="user", title="Register")
+
+        try:
+            new_user = User(username=username,
+                            email=email,
+                            level=level,
+                            password=hashed_password,
+                            created_at=datetime.utcnow(),
+                            verification_token=token
+                            )
+            db.session.add(new_user)
+            db.session.commit()
+        except exc.IntegrityError:
+            flash(u'DB Integrity error.', 'alert-danger')  # Should never occur since we already check for dupes.
+            return render_template('register.html', form=form, object="user", title="Register")
+        except exc.OperationalError:
+            flash(u'DB failure.', 'alert-danger')  # Is DB down?  Does table exist?
+            return render_template('register.html', form=form, object="user", title="Register")
+        except Exception as e:
+            print(e)
+            flash(u'Unhandled database exception.', 'alert-danger')
+            return render_template('register.html', form=form, object="user", title="Register")
+
+        send_verification_email(email, token)
+
+        flash(u'User added', 'alert-success')
+        return redirect((url_for("view_users")))
+    else:
+        # return "<h1>Error</h1>"
+        return render_template('register.html', form=form, object="user", title="Register")
 
 
 @app.route('/edit-user/<int:my_id>/', methods=['GET', 'POST'])
@@ -306,11 +505,6 @@ def edit_user(my_id):
 
             else:
                 # print("update failed")
-
-                #TODO remove
-                #username = str(form.username.data.strip())
-                #email = str(form.email.data.strip())
-                #level = str(form.level.data.strip())
 
                 return render_template('edit_item.html',
                                        my_id=my_id,
@@ -547,7 +741,56 @@ def delete_dog(my_id):
 def session_test():
     #session["logged-in"] = True
 
-    return session_dump()
+    #return session_dump()
+    return render_template('session_dump.html',
+                           session_data=session_dump()
+                           )
+
+
+@app.route('/logout')
+def logout():
+    session.clear()
+
+    flash(u'You have been logged out.', 'alert-success')
+    return redirect(url_for('index'))
+
+
+@app.route('/confirm-email/<token>/<my_email>', methods=['GET'])
+def confirm_email(token, my_email):
+    try:
+        s.loads(token, salt=config.SALT, max_age=86400)  #86400=24 hours
+
+        #  The token works.  Now verify it belongs to email address
+        #  and update the relevant fields.
+
+        user = User.query.filter(User.email == my_email).first()
+
+        if user:
+            user.active = True
+            user.confirmed_at = datetime.utcnow()
+            db.session.commit()
+
+            flash(u'Activation successful!  Please login below.', 'alert-success')
+            return redirect(url_for('login'))
+        else:   # Email address does not exist.  Hacker?
+            flash(u'Invalid email address.', 'alert-danger')
+            return render_template('login.html', form=LoginForm())
+
+    except SignatureExpired:
+        flash(u'ERROR: Token has expired (1).  Try logging in again.', 'alert-danger')
+        return render_template('login.html', form=LoginForm())
+    except BadTimeSignature:
+        flash(u'ERROR: Token is invalid (2).', 'alert-danger')
+        return render_template('login.html', form=LoginForm())
+    except BadSignature:
+        flash(u'ERROR: Token is invalid (3).', 'alert-danger')
+        return render_template('login.html', form=LoginForm())
+
+
+@app.route('/profile/')
+def profile():
+
+    return render_template('profile.html', title="Profile")
 
 
 @app.errorhandler(404)
@@ -555,6 +798,9 @@ def page_not_found(e):
     # note that we set the 404 status explicitly
     flash(u'Invalid URL', 'alert-warning')
     return render_template('404.html'), 404
+
+
+# TODO Wrap all DB calls in try/except
 
 
 if __name__ == '__main__':

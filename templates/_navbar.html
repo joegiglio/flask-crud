@@ -14,12 +14,38 @@
                 <li class="nav-item">
                     <a class="nav-link" href="{{ url_for('view_dogs') }}">View Dogs</a>
                 </li>
+                <!--
                  <li class="nav-item">
                     <a class="nav-link" href="{{ url_for('add_user') }}">ADMIN Add User</a>
                 </li>
+                -->
                 <li class="nav-item">
                     <a class="nav-link" href="{{ url_for('view_users') }}">ADMIN View Users</a>
                 </li>
+
+                {% if "user_id" not in session %}
+                    <!--
+                        <li class="nav-item">
+                            <a class="nav-link nav-link-secondary" href="{# url_for('signup') #}">Register</a>
+                        </li>
+                    -->
+                    <li class="nav-item">
+                        <a class="nav-link nav-link-secondary" href="{{ url_for('login') }}">Login</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link nav-link-secondary" href="{{ url_for('register') }}">Register</a>
+                    </li>
+                {% else %}
+                    <li class="nav-item">
+                        <a class="nav-link nav-link-secondary" href="{{ url_for('session_test') }}">Session Dump</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link nav-link-secondary" href="{{ url_for('profile') }}">Profile</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link nav-link-secondary" href="{{ url_for('logout') }}">Logout</a>
+                    </li>
+                {% endif %}
             </ul>
         </div>
     </div>
