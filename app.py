@@ -318,6 +318,7 @@ def register():
 
 @app.route('/activate/', methods=['GET', 'POST'])
 def activate():
+    # Called if account tries to login and the email address was not yet activated.
     form = ValidateEmailForm()
 
     if form.validate_on_submit():
@@ -325,48 +326,42 @@ def activate():
         email = form.email.data.strip()
         token = s.dumps(form.email.data, salt=app.config['SALT'])
 
-        # If email address has been changed, make sure it does not yet exist in the DB.
-
         user = User.query.filter(User.id == my_id).first()
-        user.verification_token = token
 
-        # print(token, len(token))
-        db.session.commit()
+        # Make sure submitted email address does not belong to another user.
+        if user.email == email:
+            user.verification_token = token
+            # print(token, len(token))
+            db.session.commit()
 
-        send_verification_email(email, token)
+            send_verification_email(email, token)
 
-        flash(u'Please check your email for a verification link.', 'alert-success')
-        return redirect((url_for("index")))
+            flash(u'Please check your email for a verification link.', 'alert-success')
+            return redirect((url_for("index")))
+        else:
+            email_exists = User.query.filter(User.email == email).first()
 
-        # TODO:Figure out session problem.
+            if email_exists:    # This email already exists in the DB and is used by another user.  Show error.
+                flash(u'Unable to use this email address (1).  Please submit another.', 'alert-danger')
 
-    else: #form errors
+                #form.email.data = email
+                return render_template('register.html', title="Register", object="email", form=form, email=email)
+            else:   # This email address does not exist in the DB.  Let this user register it.
+                user.verification_token = token
+                user.email = email
+                # print(token, len(token))
+                db.session.commit()
+
+                send_verification_email(email, token)
+
+                flash(u'Please check your email for a verification link.', 'alert-success')
+                return redirect((url_for("index")))
+
+    else:   # form errors
         return render_template('register.html',
                                form=form,
                                title="Activate",
                                object="email")
-        return render_template('add_item.html', form=form, object="user", title="Add User")
-
-        # try:
-        #     new_user = User(username=username,
-        #                     email=email,
-        #                     level=level,
-        #                     created_at=datetime.utcnow(),
-        #                     )
-        #     db.session.add(new_user)
-        #     db.session.commit()
-        # except exc.IntegrityError:
-        #     flash(u'DB Integrity error.', 'alert-danger')  # Should never occur since we already check for dupes.
-        #     return render_template('add_item.html', form=form, object="user", title="Add User")
-        # except exc.OperationalError:
-        #     flash(u'DB failure.', 'alert-danger')  # Is DB down?  Does table exist?
-        #     return render_template('add_item.html', form=form, object="user", title="Add User")
-        # except Exception as e:
-        #     print(e)
-        #     flash(u'Unhandled database exception.', 'alert-danger')
-        #     return render_template('add_item.html', form=form, object="user", title="Add User")
-        #
-        # flash(u'User added', 'alert-success')
 
 
 @app.route('/view_users', methods=['GET', 'POST'])

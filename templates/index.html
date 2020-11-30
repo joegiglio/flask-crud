@@ -7,7 +7,7 @@
 {% block content %}
     <div class="container-fluid bg-light-grey text-black">
             <div class="col-sm-8 p-1">
-                {{ greeting }}
+                {{ greeting | safe }}
             </div>
         </div>
 {% endblock %}

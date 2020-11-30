@@ -1,1 +1,2 @@
-greeting = "Hey there.  Welcome to this Flask site!"
+greeting = "Hey there.  Welcome to this Flask site!  <br>" \
+           "Hopefully it helps you learn some web development concepts."
