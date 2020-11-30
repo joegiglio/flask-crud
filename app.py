@@ -205,7 +205,6 @@ def index():
 @app.route('/login/', methods=['GET', 'POST'])
 def login():
     form = LoginForm()
-    #request.method == 'POST':
 
     if form.validate_on_submit():
         username = form.username.data.strip()
@@ -217,7 +216,7 @@ def login():
 
         user = User.query.filter(User.username == username).first()
 
-        if user and check_password_hash(user.password, password):
+        if user and check_password_hash(user.password, password):   # User exists and hashed password is valid.
             if user.active:
                 try:
                     user.login_count = user.login_count + 1
@@ -239,12 +238,9 @@ def login():
                     return render_template('login.html', form=form, title="Login")
 
                 flash(u'Login successful', 'alert-success')
-                #return render_template('login.html', form=form, title="Login")
-                #return redirect(url_for("session_test"))
                 return render_template('profile.html', title="Profile")
             else:
                 flash(u'This account has not been activated.', 'alert-danger')
-                # return render_template('login.html', form=form, title="Login")
                 form = ValidateEmailForm()
                 session["validate_user_id"] = user.id
 
@@ -282,7 +278,7 @@ def register():
 
         email_exists = User.query.filter(User.email == email).first()
         if email_exists:
-            flash(u'Email already exists', 'alert-danger')
+            flash(u'Email address already exists', 'alert-danger')
             return render_template('register.html', form=form, object="user", title="Register")
 
         try:
@@ -295,6 +291,12 @@ def register():
                             )
             db.session.add(new_user)
             db.session.commit()
+
+            send_verification_email(email, token)
+
+            flash(u'User added.  Please check your email address for an activation link.', 'alert-success')
+            #return redirect((url_for("view_users")))
+            return redirect((url_for("index")))
         except exc.IntegrityError:
             flash(u'DB Integrity error.', 'alert-danger')  # Should never occur since we already check for dupes.
             return render_template('register.html', form=form, object="user", title="Register")
@@ -306,10 +308,6 @@ def register():
             flash(u'Unhandled database exception.', 'alert-danger')
             return render_template('register.html', form=form, object="user", title="Register")
 
-        send_verification_email(email, token)
-
-        flash(u'User added', 'alert-success')
-        return redirect((url_for("view_users")))
     else:
         # return "<h1>Error</h1>"
         return render_template('register.html', form=form, object="user", title="Register")
@@ -341,9 +339,8 @@ def activate():
             email_exists = User.query.filter(User.email == email).first()
 
             if email_exists:    # This email already exists in the DB and is used by another user.  Show error.
-                flash(u'Unable to use this email address (1).  Please submit another.', 'alert-danger')
+                flash(u'This email address is already in use.  Please submit another.', 'alert-danger')
 
-                #form.email.data = email
                 return render_template('register.html', title="Register", object="email", form=form, email=email)
             else:   # This email address does not exist in the DB.  Let this user register it.
                 user.verification_token = token
@@ -405,6 +402,7 @@ def view_users():
 
 @app.route('/add-user/', methods=['GET', 'POST'])
 def add_user():
+    #  NO LONGER USER.  REPLACED WITH /REGISTER.
     form = RegisterUserForm()
 
     if form.validate_on_submit():
@@ -507,11 +505,6 @@ def edit_user(my_id):
 
             else:
                 # print("update failed")
-
-                #TODO remove
-                #username = str(form.username.data.strip())
-                #email = str(form.email.data.strip())
-                #level = str(form.level.data.strip())
 
                 return render_template('edit_item.html',
                                        my_id=my_id,
@@ -805,6 +798,9 @@ def page_not_found(e):
     # note that we set the 404 status explicitly
     flash(u'Invalid URL', 'alert-warning')
     return render_template('404.html'), 404
+
+
+# TODO Wrap all DB calls in try/except
 
 
 if __name__ == '__main__':
