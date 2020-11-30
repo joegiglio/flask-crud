@@ -30,8 +30,7 @@ s = URLSafeTimedSerializer(app.config['SECRET_KEY'])
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
 
-
-#   TODO: Move models to separate file.  I was having inheritace issues with db.create_all.  Need to revisit.
+#   TODO: Move models to separate file.  I was having inheritance issues with db.create_all.  Need to revisit.
 
 #Form Models
 
