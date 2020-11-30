@@ -240,8 +240,9 @@ def login():
                     return render_template('login.html', form=form, title="Login")
 
                 flash(u'Login successful', 'alert-success')
-                return render_template('login.html', form=form, title="Login")
+                #return render_template('login.html', form=form, title="Login")
                 #return redirect(url_for("session_test"))
+                return render_template('profile.html', title="Profile")
             else:
                 flash(u'This account has not been activated.', 'alert-danger')
                 # return render_template('login.html', form=form, title="Login")
@@ -323,6 +324,8 @@ def activate():
         my_id = session["validate_user_id"]
         email = form.email.data.strip()
         token = s.dumps(form.email.data, salt=app.config['SALT'])
+
+        # If email address has been changed, make sure it does not yet exist in the DB.
 
         user = User.query.filter(User.id == my_id).first()
         user.verification_token = token
@@ -771,10 +774,10 @@ def confirm_email(token, my_email):
         s.loads(token, salt=config.SALT, max_age=86400)  #86400=24 hours
 
         #  The token works.  Now verify it belongs to email address
-        #  and updated the relevant fields.
+        #  and update the relevant fields.
 
         user = User.query.filter(User.email == my_email).first()
-        #  user = queries.validate_user(User, my_email)
+
         if user:
             user.active = True
             user.confirmed_at = datetime.utcnow()
@@ -795,6 +798,12 @@ def confirm_email(token, my_email):
     except BadSignature:
         flash(u'ERROR: Token is invalid (3).', 'alert-danger')
         return render_template('login.html', form=LoginForm())
+
+
+@app.route('/profile/')
+def profile():
+
+    return render_template('profile.html', title="Profile")
 
 
 @app.errorhandler(404)
