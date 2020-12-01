@@ -173,7 +173,7 @@ class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     created_at = db.Column(db.DateTime())
     username = db.Column(db.String(20), nullable=False, unique=True)
-    password = db.Column(db.String(255), nullable=False, server_default='')
+    password = db.Column(db.String(255), nullable=False)
     email = db.Column(db.String(255), nullable=False, unique=True)
     verification_token = db.Column(db.String(100), nullable=False)
     confirmed_at = db.Column(db.DateTime())
