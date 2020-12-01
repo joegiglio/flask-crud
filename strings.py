@@ -7,8 +7,8 @@ greeting = "Welcome to this Flask site!  <br>" \
            "session_required<br>admin_required<br>super_admin_required<br><br>" \
            "Add Dog requires a login of any user level.<br>" \
            "View Dogs can be viewed by anyone, even if not logged in.<br>" \
-           "From within that page, you must be an Admin to Edit users or Super Admin " \
+           "- From within that page, you must be an Admin to Edit users or Super Admin " \
            "to delete dogs.<br>" \
            "View Users requires an Admin account.<br>" \
-           "From within that page, you must be a Super Admin to delete a user." \
-           ""
+           "- From within that page, you must be a Super Admin to delete a user.<br>" \
+           "Send Email requires an Admin account.<br>"

@@ -8,7 +8,7 @@ from wtforms.validators import InputRequired, Email, Length, NumberRange, EqualT
 from datetime import datetime
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import exc, func, MetaData
-from utils import session_dump, send_verification_email
+from utils import session_dump, send_verification_email, send_webform_email
 from flask_migrate import Migrate
 from werkzeug.security import generate_password_hash, check_password_hash
 from itsdangerous import URLSafeTimedSerializer, SignatureExpired, BadTimeSignature, BadSignature
@@ -16,23 +16,23 @@ from itsdangerous import URLSafeTimedSerializer, SignatureExpired, BadTimeSignat
 from strings import greeting
 from decorators import session_required, admin_required, super_admin_required
 
-
 # Unused but may need them later!
 
-#from decorators import session_required, admin_required, session_required_obj, session_required_review
+# from decorators import session_required, admin_required, session_required_obj, session_required_review
 
 
 app = Flask(__name__)
 app.config.from_pyfile("config.py")
-#mail = Mail(app)
+# mail = Mail(app)
 
 s = URLSafeTimedSerializer(app.config['SECRET_KEY'])
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
 
+
 #   TODO: Move models to separate file.  I was having inheritance issues with db.create_all.  Need to revisit.
 
-#Form Models
+# Form Models
 
 
 class SampleForm(FlaskForm):
@@ -50,8 +50,8 @@ class LoginForm(FlaskForm):
                                InputRequired()
                            ])
     password = PasswordField('Password', validators=[
-                                InputRequired()
-                            ])
+        InputRequired()
+    ])
     remember = BooleanField('Remember Me for 30 days')
 
 
@@ -165,7 +165,28 @@ class DogSortForm(FlaskForm):
     ])
 
 
-#DB Models
+class SendEmailForm(FlaskForm):
+    email_to = StringField('To Address', validators=[
+        InputRequired(),
+        Email(message="Invalid email address."),
+        Length(message="Email address must be between 5 and 50 characters",
+               min=5, max=50)
+    ])
+
+    subject = StringField('Email Subject', validators=[
+        InputRequired(),
+        Length(message="Subject must be between 1 and 50 characters",
+               min=1, max=50)
+    ])
+
+    email_body = TextAreaField('Message Body', validators=[
+        InputRequired(),
+        Length(message="Message body must be between 3 and 1000 characters",
+               min=3, max=1000)
+    ])
+
+
+# DB Models
 
 
 class User(db.Model):
@@ -196,7 +217,6 @@ class Dog(db.Model):
 
 @app.route('/', methods=['GET', 'POST'])
 def index():
-
     # The 'greeting' string comes from one of the imports.
 
     return render_template('index.html', title="Homepage", greeting=greeting)
@@ -212,11 +232,11 @@ def login():
 
         #  Check for existence of matching username and password.
         #  Commented so we can use hashed passwords.
-        #user = User.query.filter(User.username == username, User.password == password).first()
+        # user = User.query.filter(User.username == username, User.password == password).first()
 
         user = User.query.filter(User.username == username).first()
 
-        if user and check_password_hash(user.password, password):   # User exists and hashed password is valid.
+        if user and check_password_hash(user.password, password):  # User exists and hashed password is valid.
             if user.active:
                 try:
                     user.login_count = user.login_count + 1
@@ -227,7 +247,8 @@ def login():
                     session["user_level"] = user.level
 
                 except exc.IntegrityError:
-                    flash(u'DB Integrity error.', 'alert-danger')  # Should never occur since we already check for dupes.
+                    flash(u'DB Integrity error.',
+                          'alert-danger')  # Should never occur since we already check for dupes.
                     return render_template('login.html', form=form, title="Login")
                 except exc.OperationalError:
                     flash(u'DB failure.', 'alert-danger')  # Is DB down?  Does table exist?
@@ -295,7 +316,7 @@ def register():
             send_verification_email(email, token)
 
             flash(u'User added.  Please check your email address for an activation link.', 'alert-success')
-            #return redirect((url_for("view_users")))
+            # return redirect((url_for("view_users")))
             return redirect((url_for("index")))
         except exc.IntegrityError:
             flash(u'DB Integrity error.', 'alert-danger')  # Should never occur since we already check for dupes.
@@ -338,11 +359,11 @@ def activate():
         else:
             email_exists = User.query.filter(User.email == email).first()
 
-            if email_exists:    # This email already exists in the DB and is used by another user.  Show error.
+            if email_exists:  # This email already exists in the DB and is used by another user.  Show error.
                 flash(u'This email address is already in use.  Please submit another.', 'alert-danger')
 
                 return render_template('register.html', title="Register", object="email", form=form, email=email)
-            else:   # This email address does not exist in the DB.  Let this user register it.
+            else:  # This email address does not exist in the DB.  Let this user register it.
                 user.verification_token = token
                 user.email = email
                 # print(token, len(token))
@@ -353,7 +374,7 @@ def activate():
                 flash(u'Please check your email for a verification link.', 'alert-success')
                 return redirect((url_for("index")))
 
-    else:   # form errors
+    else:  # form errors
         return render_template('register.html',
                                form=form,
                                title="Activate",
@@ -391,7 +412,7 @@ def view_users():
     else:
         # Sort by newest first if sort option not submitted.
         users = User.query.order_by(User.id.desc()).all()
-        #print(db.session.query)
+        # print(db.session.query)
 
     return render_template('view_items.html',
                            users=users,
@@ -472,7 +493,7 @@ def edit_user(my_id):
                 username_exists = User.query.filter(User.username == username).first()
                 if username_exists:
                     if username_exists.id != my_id:
-                        #print(username_exists.id, my_id)
+                        # print(username_exists.id, my_id)
                         flash(u'Username already exists.', 'alert-danger')
                         return render_template('edit_item.html', form=form, my_id=my_id, object="user")
 
@@ -575,10 +596,10 @@ def add_dog():
 
         try:
             new_dog = Dog(name=name,
-                            age=age,
-                            breed=breed,
-                            created_at=datetime.utcnow(),
-                            )
+                          age=age,
+                          breed=breed,
+                          created_at=datetime.utcnow(),
+                          )
             db.session.add(new_dog)
             db.session.commit()
         except exc.IntegrityError:
@@ -636,7 +657,7 @@ def view_dogs():
     else:
         # Sort by newest first if sort option not submitted.
         dogs = Dog.query.order_by(Dog.id.desc()).all()
-        #print(db.session.query)
+        # print(db.session.query)
 
     return render_template('view_items.html',
                            dogs=dogs,
@@ -664,7 +685,7 @@ def edit_dog(my_id):
                 name_exists = Dog.query.filter(Dog.name == name).first()
                 if name_exists:
                     if name_exists.id != my_id:
-                        #print(username_exists.id, my_id)
+                        # print(username_exists.id, my_id)
                         flash(u'Dog already exists.', 'alert-danger')
                         return render_template('edit_item.html', form=form, my_id=my_id, object="dog")
 
@@ -701,7 +722,7 @@ def edit_dog(my_id):
                 return render_template('edit_item.html',
                                        my_id=my_id,
                                        form=form,
-                                        object="dog"
+                                       object="dog"
                                        )
 
         else:  # This is a GET, so display the edit form.
@@ -745,9 +766,9 @@ def delete_dog(my_id):
 
 @app.route('/session_test')
 def session_test():
-    #session["logged-in"] = True
+    # session["logged-in"] = True
 
-    #return session_dump()
+    # return session_dump()
     return render_template('session_dump.html',
                            session_data=session_dump()
                            )
@@ -764,7 +785,7 @@ def logout():
 @app.route('/confirm-email/<token>/<my_email>', methods=['GET'])
 def confirm_email(token, my_email):
     try:
-        s.loads(token, salt=config.SALT, max_age=86400)  #86400=24 hours
+        s.loads(token, salt=config.SALT, max_age=86400)  # 86400=24 hours
 
         #  The token works.  Now verify it belongs to email address
         #  and update the relevant fields.
@@ -778,7 +799,7 @@ def confirm_email(token, my_email):
 
             flash(u'Activation successful!  Please login below.', 'alert-success')
             return redirect(url_for('login'))
-        else:   # Email address does not exist.  Hacker?
+        else:  # Email address does not exist.  Hacker?
             flash(u'Invalid email address.', 'alert-danger')
             return render_template('login.html', form=LoginForm())
 
@@ -796,8 +817,33 @@ def confirm_email(token, my_email):
 @app.route('/profile/')
 @session_required
 def profile():
-
     return render_template('profile.html', title="Profile")
+
+
+@app.route('/send-email/', methods=['GET', 'POST'])
+@admin_required
+def send_email():
+    form = SendEmailForm()
+
+    if form.validate_on_submit():
+        email_to = form.email_to.data.strip()
+        subject = form.subject.data.strip()
+        email_body = form.email_body.data.strip()
+
+        try:
+            send_webform_email(email_to, subject, email_body)
+        except Exception as e:
+            print(e)
+            flash(u'Unhandled email exception.', 'alert-danger')
+
+            return render_template('email_form.html', form=form, title="Send Email",
+                                   from_address=app.config['MAIL_SENDER'])
+
+        flash(u'Email sent', 'alert-success')
+        return redirect((url_for("send_email")))
+    else:
+        return render_template('email_form.html', form=form, title="Send Email",
+                               from_address=app.config['MAIL_SENDER'])
 
 
 @app.errorhandler(404)
