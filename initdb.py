@@ -20,9 +20,13 @@ os.system("flask db upgrade")  # applies DB change
 
 print("Creating sample data...")
 
-hashed_password = generate_password_hash("joetest", method='sha256')
-user = User(username="joetest", email="joe+test@joegiglio.org", level=100, created_at=datetime.utcnow(),
+hashed_password = generate_password_hash("password", method='sha256')
+user = User(username="user", email="joe+test@joegiglio.org", level=100, created_at=datetime.utcnow(),
             verification_token="null", active=1, password=hashed_password)
+
+hashed_password = generate_password_hash("password", method='sha256')
+admin = User(username="admin", email="joe+admin@joegiglio.org", level=200, created_at=datetime.utcnow(),
+                  verification_token="null", active=1, password=hashed_password)
 
 hashed_password = generate_password_hash("password", method='sha256')
 superadmin = User(username="superadmin", email="joe+superadmin@joegiglio.org", level=300, created_at=datetime.utcnow(),
@@ -31,6 +35,7 @@ superadmin = User(username="superadmin", email="joe+superadmin@joegiglio.org", l
 dog = Dog(name="Romeo", breed="Maltese", age=12, created_at=datetime.utcnow())
 
 db.session.add(user)
+db.session.add(admin)
 db.session.add(superadmin)
 db.session.add(dog)
 db.session.commit()

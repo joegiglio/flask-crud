@@ -14,7 +14,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from itsdangerous import URLSafeTimedSerializer, SignatureExpired, BadTimeSignature, BadSignature
 # from flask_mail import Mail, Message
 from strings import greeting
-import config
+from decorators import session_required, admin_required, super_admin_required
 
 
 # Unused but may need them later!
@@ -361,6 +361,7 @@ def activate():
 
 
 @app.route('/view_users', methods=['GET', 'POST'])
+@admin_required
 def view_users():
     form = UserSortForm()
 
@@ -455,6 +456,7 @@ def add_user():
 
 
 @app.route('/edit-user/<int:my_id>/', methods=['GET', 'POST'])
+@admin_required
 def edit_user(my_id):
     form = EditUserForm()
     user = User.query.filter(User.id == my_id).first()
@@ -535,6 +537,7 @@ def edit_user(my_id):
 
 
 @app.route('/delete-user/<int:my_id>/')
+@super_admin_required
 def delete_user(my_id):
     user = User.query.filter(User.id == my_id).first()
 
@@ -551,6 +554,7 @@ def delete_user(my_id):
 
 
 @app.route('/add-dog/', methods=['GET', 'POST'])
+@session_required
 def add_dog():
     form = CreateDogForm()
     if form.validate_on_submit():
@@ -643,6 +647,7 @@ def view_dogs():
 
 
 @app.route('/edit-dog/<int:my_id>/', methods=['GET', 'POST'])
+@admin_required
 def edit_dog(my_id):
     form = EditDogForm()
     dog = Dog.query.filter(Dog.id == my_id).first()
@@ -722,6 +727,7 @@ def edit_dog(my_id):
 
 
 @app.route('/delete-dog/<int:my_id>/')
+@super_admin_required
 def delete_dog(my_id):
     dog = Dog.query.filter(Dog.id == my_id).first()
 
@@ -788,6 +794,7 @@ def confirm_email(token, my_email):
 
 
 @app.route('/profile/')
+@session_required
 def profile():
 
     return render_template('profile.html', title="Profile")
