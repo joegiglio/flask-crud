@@ -29,7 +29,7 @@ def admin_required(func):
 
 
 def super_admin_required(func):
-    """Make sure user is Admin level before proceeding"""
+    """Make sure user is Super Admin level before proceeding"""
     @functools.wraps(func)
     def super_admin_required(*args, **kwargs):
         if (session.get("user_level")) is None or int(session.get("user_level") < 300):
