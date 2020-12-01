@@ -9,6 +9,9 @@
         <div class="container-fluid bg-light-grey text-black">
             <div class="col-sm-8 p-1">
                 Editing user id {{ my_id }}. <br><br>
+                Some security concerns on this page:<br>
+                - Users should not be able to edit their own user level.<br>
+                - Admins should not be able to assign users to the Super Admin group.<br><br>
                 <form method="post">
 
                     {{ form.csrf_token }}

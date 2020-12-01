@@ -6,6 +6,7 @@ from app import Dog
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from datetime import datetime
+from werkzeug.security import generate_password_hash
 
 app = Flask(__name__)
 #db = SQLAlchemy(app)
@@ -19,10 +20,23 @@ os.system("flask db upgrade")  # applies DB change
 
 print("Creating sample data...")
 
-user = User(username="joe1", email="joe1@joe.com", level=100, created_at=datetime.utcnow())
+hashed_password = generate_password_hash("password", method='sha256')
+user = User(username="user", email="joe+test@joegiglio.org", level=100, created_at=datetime.utcnow(),
+            verification_token="null", active=1, password=hashed_password)
+
+hashed_password = generate_password_hash("password", method='sha256')
+admin = User(username="admin", email="joe+admin@joegiglio.org", level=200, created_at=datetime.utcnow(),
+                  verification_token="null", active=1, password=hashed_password)
+
+hashed_password = generate_password_hash("password", method='sha256')
+superadmin = User(username="superadmin", email="joe+superadmin@joegiglio.org", level=300, created_at=datetime.utcnow(),
+                  verification_token="null", active=1, password=hashed_password)
+
 dog = Dog(name="Romeo", breed="Maltese", age=12, created_at=datetime.utcnow())
 
 db.session.add(user)
+db.session.add(admin)
+db.session.add(superadmin)
 db.session.add(dog)
 db.session.commit()
 
