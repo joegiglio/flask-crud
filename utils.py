@@ -58,3 +58,13 @@ def send_verification_email(my_email, my_token):
                   recipients=[my_email], html=email_body)
 
     mail.send(msg)
+
+
+def send_webform_email(my_to, my_subject, my_body):
+
+    my_body_fix_linebreaks = my_body.replace("\n", "<br>")
+
+    msg = Message(subject=my_subject, sender=app.config['MAIL_SENDER'],
+                  recipients=[my_to], html=my_body_fix_linebreaks)
+
+    mail.send(msg)

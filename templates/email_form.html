@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% block title %}
+{{ title }}
+{% endblock %}
+
+{% block content %}
+        <div class="container-fluid bg-light-grey text-black">
+            <div class="col-sm-8 p-1">
+                <h3>Send Email</h3>
+                <form method="post">
+
+                    {{ form.csrf_token }}
+                    From {{ from_address }}<br>
+                    {{ render_field_no_break(form.email_to) }}<br>
+                    {{ render_field_no_break(form.subject) }}<br>
+                    {{ render_field_no_break(form.email_body, cols=75, rows=10) }}<br>
+
+                    <input type="submit" value="Submit" class="btn-success"
+                           onclick="this.form.submit(); this.disabled = true; this.value = 'Submitting...';">
+
+                </form>
+            </div>
+        </div>
+{% endblock %}
