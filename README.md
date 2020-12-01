@@ -32,6 +32,7 @@ as passwords and keys.  It is excluded from the default .gitignore file.  Keep t
 (Feel free to create a branch if you want to contribute!)
 1.  Code cleanup into modules
 2.  Add login redirects to bring you to the target page after login
+3.  File uploads
 
 
 
