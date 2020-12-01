@@ -30,8 +30,6 @@ as passwords and keys.  It is excluded from the default .gitignore file.  Keep t
 **Coming soon in future versions:**
 (Feel free to create a branch if you want to contribute!)
 1.  Send email through a form
-2.  Authentication system
-3.  Custom decorators to check for logged in user and user level
-4.  Code cleanup into modules
+2.  Code cleanup into modules
 
 
